@@ -84,9 +84,9 @@ static void GetWalletNameAndPath(const std::string& wallet_file, std::string& wa
     fs::path name;
     fs::path parent = wallet_path;
     while (!parent.empty()) {
-        if (parent == GetWalletDir()) {
-            break;
-        }
+//        if (parent == GetWalletDir()) {
+//            break;
+//        }
         name = parent.filename() / name;
         parent = parent.parent_path();
     }
