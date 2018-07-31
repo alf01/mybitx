@@ -203,10 +203,14 @@ public:
     interfaces::Wallet& wallet() const { return *m_wallet; }
 
     QString getWalletName() const;
+    QString getDisplayName() const;
 
     bool isMultiwallet();
 
     AddressTableModel* getAddressTableModel() const { return addressTableModel; }
+
+    void requestUnload();
+
 private:
     std::unique_ptr<interfaces::Wallet> m_wallet;
     std::unique_ptr<interfaces::Handler> m_handler_unload;

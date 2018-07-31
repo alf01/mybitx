@@ -303,6 +303,11 @@ AddressTableModel *WalletModel::getAddressTableModel()
     return addressTableModel;
 }
 
+void WalletModel::requestUnload()
+{
+    m_wallet->unload();
+}
+
 TransactionTableModel *WalletModel::getTransactionTableModel()
 {
     return transactionTableModel;
@@ -566,6 +571,12 @@ bool WalletModel::privateKeysDisabled() const
 QString WalletModel::getWalletName() const
 {
     return QString::fromStdString(m_wallet->getWalletName());
+}
+
+QString WalletModel::getDisplayName() const
+{
+    const QString name = getWalletName();
+    return name.isEmpty() ? "["+tr("default wallet")+"]" : name;
 }
 
 bool WalletModel::isMultiwallet()
