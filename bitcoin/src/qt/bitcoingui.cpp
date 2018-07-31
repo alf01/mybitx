@@ -711,6 +711,9 @@ void BitcoinGUI::newWallet()
         QMessageBox::information(this, tr("New Wallet"), QString::fromStdString(error));
         return;
     }
+    else{
+        appendToPrevWallets(file_name);
+    }
     if (!warning.empty()) {
         QMessageBox::information(this, tr("New Wallet"), QString::fromStdString(warning));
     }
@@ -724,10 +727,106 @@ void BitcoinGUI::newWallet()
         QMessageBox::information(this, tr("Open Wallet"), QString::fromStdString(error));
         return;
     }
+    else{
+        appendToPrevWallets(file_name);
+    }
     if (!warning.empty()) {
         QMessageBox::information(this, tr("Open Wallet"), QString::fromStdString(warning));
     }
 }
+
+ void BitcoinGUI::openWalletByPath(QString wallet_path)
+ {
+     if (wallet_path.isEmpty()) return;
+
+     std::string error, warning;
+     if (!m_node.loadWallet(QDir::toNativeSeparators(wallet_path).toStdString(), error, warning)) {
+         QMessageBox::information(this, tr("Open Wallet"), QString::fromStdString(error));
+         return;
+     }
+     if (!warning.empty()) {
+         QMessageBox::information(this, tr("Open Wallet"), QString::fromStdString(warning));
+     }
+ }
+
+ void BitcoinGUI::openPrevWallets()
+ {
+     QSettings settings;
+     QString prevWallets;
+
+     prevWallets = settings.value("strPrevWallets", prevWallets).toString();
+
+     if (!prevWallets.isEmpty()) {
+         QStringList pieces = prevWallets.split( ";" );
+
+         for (int i = 0; i < pieces.length(); i++) {
+             QString wPath = pieces.value(i);
+             if (!wPath.isEmpty()) {
+               openWalletByPath(wPath);
+             }
+         }
+     }
+ }
+
+ void BitcoinGUI::appendToPrevWallets(QString newPath)
+ {
+     newPath = QDir::toNativeSeparators(newPath);
+     QSettings settings;
+     QString prevWallets;
+
+
+     prevWallets = settings.value("strPrevWallets", prevWallets).toString();
+
+
+
+     if (!prevWallets.isEmpty()) {
+         QStringList pieces = prevWallets.split( ";" );
+
+         bool walletExist = false;
+         for (int i = 0; i < pieces.length(); i++) {
+             QString wPath = pieces.value(i);
+
+             if (!wPath.isEmpty() && wPath == newPath) {
+               walletExist = true;
+             }
+         }
+
+         QString defaultWalletPath;
+         defaultWalletPath = settings.value("strDataDir", defaultWalletPath).toString();
+
+         if (QString::compare(newPath, defaultWalletPath, Qt::CaseInsensitive) == 0) // if strings are equal - should return 0
+         {
+             walletExist = true;
+         }
+
+         if (!walletExist) {
+             pieces.append(newPath);
+         }
+
+         QString savedlist = pieces.join(";");
+         settings.setValue("strPrevWallets", savedlist);
+     }
+     else {
+         settings.setValue("strPrevWallets", newPath);
+     }
+ }
+
+ void BitcoinGUI::removeFromPrevWallets(QString newPath)
+ {
+     newPath = QDir::toNativeSeparators(newPath);
+     QSettings settings;
+     QString prevWallets;
+
+     prevWallets = settings.value("strPrevWallets", prevWallets).toString();
+
+     if (!prevWallets.isEmpty()) {
+         QStringList pieces = prevWallets.split( ";" );
+         pieces.removeOne(newPath);
+         QString savedlist = pieces.join(";");
+         settings.setValue("strPrevWallets", savedlist);
+     }
+ }
+
  void BitcoinGUI::closeWallet()
 {
     if (!walletFrame) return;
@@ -740,6 +839,8 @@ void BitcoinGUI::newWallet()
              QMessageBox::Cancel);
      if (retval != QMessageBox::Yes) return;
      wallet_model->requestUnload();
+     removeFromPrevWallets(wallet_model->getDisplayName());
+
 }
 
 void BitcoinGUI::gotoOverviewPage()

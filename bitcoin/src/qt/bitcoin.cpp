@@ -507,6 +507,13 @@ void BitcoinApplication::initializeResult(bool success)
         Q_EMIT splashFinished(window); // Make sure splash screen doesn't stick around during shutdown
         quit(); // Exit first main loop invocation
     }
+
+#ifdef ENABLE_WALLET
+
+    window->openPrevWallets();
+
+#endif
+
 }
 
 void BitcoinApplication::shutdownResult()

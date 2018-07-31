@@ -197,6 +197,11 @@ public Q_SLOTS:
     */
     void updateWalletStatus();
 
+    void openWalletByPath(QString wallet_path);
+    void openPrevWallets();
+    void appendToPrevWallets(QString newPath);
+    void removeFromPrevWallets(QString newPath);
+
 private:
     /** Set the encryption status as shown in the UI.
        @param[in] status            current encryption status
