@@ -330,6 +330,8 @@ void BitcoinGUI::createActions()
     m_open_wallet_action->setStatusTip(tr("Open a wallet"));
     m_close_wallet_action = new QAction(platformStyle->TextColorIcon(":/icons/open"), tr("Close Wallet..."), this);
     m_close_wallet_action->setStatusTip(tr("Close wallet..."));
+    m_dump_wallet_action = new QAction(platformStyle->TextColorIcon(":/icons/verify"), tr("Dump Wallet..."), this);
+    m_dump_wallet_action->setStatusTip(tr("Dump wallet..."));
 
     showHelpMessageAction = new QAction(platformStyle->TextColorIcon(":/icons/info"), tr("&Command-line options"), this);
     showHelpMessageAction->setMenuRole(QAction::NoRole);
@@ -359,6 +361,7 @@ void BitcoinGUI::createActions()
         connect(m_new_wallet_action, &QAction::triggered, this, &BitcoinGUI::newWallet);
         connect(m_open_wallet_action, &QAction::triggered, this, &BitcoinGUI::openWallet);
         connect(m_close_wallet_action, &QAction::triggered, this, &BitcoinGUI::closeWallet);
+        connect(m_dump_wallet_action, &QAction::triggered, this, &BitcoinGUI::dumpWallet);
     }
 #endif // ENABLE_WALLET
 
@@ -383,6 +386,7 @@ void BitcoinGUI::createMenuBar()
         file->addAction(m_new_wallet_action);
         file->addAction(m_open_wallet_action);
         file->addAction(m_close_wallet_action);
+        file->addAction(m_dump_wallet_action);
         file->addAction(openAction);
         file->addAction(backupWalletAction);
         file->addAction(signMessageAction);
@@ -578,6 +582,7 @@ void BitcoinGUI::removeAllWallets()
 void BitcoinGUI::setWalletActionsEnabled(bool enabled)
 {
     m_close_wallet_action->setEnabled(enabled);
+    m_dump_wallet_action->setEnabled(enabled);
     overviewAction->setEnabled(enabled);
     sendCoinsAction->setEnabled(enabled);
     sendCoinsMenuAction->setEnabled(enabled);
@@ -691,6 +696,7 @@ void BitcoinGUI::showHelpMessageClicked()
 {
     helpMessageDialog->show();
 }
+
 
 #ifdef ENABLE_WALLET
 void BitcoinGUI::openClicked()
@@ -839,9 +845,24 @@ void BitcoinGUI::newWallet()
              QMessageBox::Cancel);
      if (retval != QMessageBox::Yes) return;
      wallet_model->requestUnload();
-     removeFromPrevWallets(wallet_model->getDisplayName());
+     removeFromPrevWallets(wallet_model->getWalletPath());
 
 }
+
+ void BitcoinGUI::dumpWallet()
+ {
+     if (!walletFrame) return;
+      WalletView * const wallet_view = walletFrame->currentWalletView();
+     if (!wallet_view) return;
+      WalletModel * const wallet_model = wallet_view->getWalletModel();
+//     QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Close wallet"),
+//              tr("Are you sure you wish to close wallet %1?").arg(wallet_model->getDisplayName()),
+//              QMessageBox::Yes|QMessageBox::Cancel,
+//              QMessageBox::Cancel);
+//      if (retval != QMessageBox::Yes) return;
+//      wallet_model->requestUnload();
+      wallet_model->dumpWalletModel();
+ }
 
 void BitcoinGUI::gotoOverviewPage()
 {
@@ -1232,6 +1253,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         encryptWalletAction->setChecked(false);
         changePassphraseAction->setEnabled(false);
         encryptWalletAction->setEnabled(true);
+        m_dump_wallet_action->setEnabled(true);
         break;
     case WalletModel::Unlocked:
         labelWalletEncryptionIcon->show();
@@ -1240,6 +1262,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
+        m_dump_wallet_action->setEnabled(false);
         break;
     case WalletModel::Locked:
         labelWalletEncryptionIcon->show();
@@ -1248,6 +1271,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
+        m_dump_wallet_action->setEnabled(false);
         break;
     }
 }

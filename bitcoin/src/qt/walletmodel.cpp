@@ -23,9 +23,16 @@
 #include <stdint.h>
 
 #include <QDebug>
+#include <QDir>
 #include <QMessageBox>
 #include <QSet>
 #include <QTimer>
+#include <QDesktopServices>
+#include <QUrl>
+
+#include <boost/uuid/uuid.hpp>            // uuid class
+#include <boost/uuid/uuid_generators.hpp> // generators
+#include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
 
 
 WalletModel::WalletModel(std::unique_ptr<interfaces::Wallet> wallet, interfaces::Node& node, const PlatformStyle *platformStyle, OptionsModel *_optionsModel, QObject *parent) :
@@ -573,10 +580,37 @@ QString WalletModel::getWalletName() const
     return QString::fromStdString(m_wallet->getWalletName());
 }
 
+QString WalletModel::getWalletPath() const
+{
+    const QString path = QString::fromStdString(m_wallet->getWalletPath());
+    return path.isEmpty() ? "C:" : path; //todo show defauld strDataDir
+}
+
 QString WalletModel::getDisplayName() const
 {
     const QString name = getWalletName();
     return name.isEmpty() ? "["+tr("default wallet")+"]" : name;
+}
+
+void WalletModel::dumpWalletModel()
+{
+    QString path = getWalletPath();
+
+    boost::uuids::uuid uuid = boost::uuids::random_generator()();
+    const std::string uuidsrt = boost::uuids::to_string(uuid);
+
+    QDir dirpath =  QDir(path);
+
+    QString filepath = dirpath.filePath("walletdump-" +  QString::fromStdString(uuidsrt) + ".txt");
+
+    filepath = QDir::toNativeSeparators(filepath);
+
+    m_wallet->dumpWalletInterface(filepath.toStdString());
+
+    //open folder on any OS
+    path = QDir::toNativeSeparators(path);
+    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+
 }
 
 bool WalletModel::isMultiwallet()

@@ -76,6 +76,10 @@ public:
     //! Get wallet name.
     virtual std::string getWalletName() = 0;
 
+    virtual std::string getWalletPath() = 0;
+
+    virtual void  dumpWalletInterface(std::string filepath) = 0;
+
     // Get key from pool.
     virtual bool getKeyFromPool(bool internal, CPubKey& pub_key) = 0;
 

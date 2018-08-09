@@ -492,6 +492,8 @@ public:
     /** Pass this transaction to the mempool. Fails if absolute fee exceeds absurd fee. */
     bool AcceptToMemoryPool(const CAmount& nAbsurdFee, CValidationState& state);
 
+
+
     std::set<uint256> GetConflicts() const;
 };
 
@@ -752,6 +754,8 @@ private:
      * more than one wallet is loaded.
      */
     std::string m_name;
+    std::string m_path;
+
 
     /** Internal database handle. */
     std::unique_ptr<WalletDatabase> database;
@@ -769,6 +773,7 @@ private:
     const CBlockIndex* m_last_block_processed = nullptr;
 
 public:
+
     /*
      * Main wallet lock.
      * This lock protects all the fields added by CWallet.
@@ -794,6 +799,8 @@ public:
     /** Get a name for this wallet for logging/debugging purposes.
      */
     const std::string& GetName() const { return m_name; }
+    const std::string& GetPath() const { return m_path; }
+
 
     void LoadKeyPool(int64_t nIndex, const CKeyPool &keypool) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
     void MarkPreSplitKeys();
@@ -809,7 +816,7 @@ public:
     unsigned int nMasterKeyMaxID = 0;
 
     /** Construct wallet with specified name and database implementation. */
-    CWallet(std::string name, std::unique_ptr<WalletDatabase> database) : m_name(std::move(name)), database(std::move(database))
+    CWallet(std::string name, std::unique_ptr<WalletDatabase> database) : m_name(std::move(name)), m_path(std::move(name)), database(std::move(database))
     {
     }
 
@@ -1202,6 +1209,8 @@ public:
     /** overwrite all flags by the given uint64_t
        returns false if unknown, non-tolerable flags are present */
     bool SetWalletFlags(uint64_t overwriteFlags, bool memOnly);
+
+    void dumpwalletx(std::string path);
 };
 
 /** A key allocated from the key pool. */

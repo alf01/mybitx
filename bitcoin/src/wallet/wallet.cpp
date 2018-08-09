@@ -84,9 +84,9 @@ static void GetWalletNameAndPath(const std::string& wallet_file, std::string& wa
     fs::path name;
     fs::path parent = wallet_path;
     while (!parent.empty()) {
-//        if (parent == GetWalletDir()) {
-//            break;
-//        }
+        if (parent == GetWalletDir()) {
+            break;
+        }
         name = parent.filename() / name;
         parent = parent.parent_path();
     }
@@ -4047,6 +4047,7 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(const std::string& name, 
 {
     const std::string& walletFile = name;
 
+
     // needed to restore wallet transaction meta data after -zapwallettxes
     std::vector<CWalletTx> vWtx;
 
@@ -4069,6 +4070,7 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(const std::string& name, 
     // should be possible to use std::allocate_shared.
     std::shared_ptr<CWallet> walletInstance(new CWallet(name, WalletDatabase::Create(path)), ReleaseWallet);
     DBErrors nLoadWalletRet = walletInstance->LoadWallet(fFirstRun);
+    walletInstance->m_path = path.string();
     if (nLoadWalletRet != DBErrors::LOAD_OK)
     {
         if (nLoadWalletRet == DBErrors::CORRUPT) {
@@ -4451,6 +4453,155 @@ bool CWalletTx::AcceptToMemoryPool(const CAmount& nAbsurdFee, CValidationState& 
     fInMempool |= ret;
     return ret;
 }
+
+std::string static EncodeDumpString(const std::string &str) {
+    std::stringstream ret;
+    for (unsigned char c : str) {
+        if (c <= 32 || c >= 128 || c == '%') {
+            ret << '%' << HexStr(&c, &c + 1);
+        } else {
+            ret << c;
+        }
+    }
+    return ret.str();
+}
+
+void CWallet::dumpwalletx(std::string path)
+{
+
+//    CWallet tmp = *this;
+//    CWallet* const pwallet = &tmp;
+
+    LOCK2(cs_main, cs_wallet);
+
+    if (IsLocked()) {
+        throw std::runtime_error("Error: Please enter the wallet passphrase with walletpassphrase first.");
+        //throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+    }
+
+    boost::filesystem::path filepath =path;
+    filepath = boost::filesystem::absolute(filepath);
+
+    /* Prevent arbitrary files from being overwritten. There have been reports
+     * that users have overwritten wallet files this way:
+     * https://github.com/bitcoin/bitcoin/issues/9934
+     * It may also avoid other security issues.
+     */
+    if (boost::filesystem::exists(filepath)) {
+        throw std::runtime_error(filepath.string() + " already exists. If you are sure this is what you want, move it out of the way first");
+        //throw JSONRPCError(RPC_INVALID_PARAMETER, filepath.string() + " already exists. If you are sure this is what you want, move it out of the way first");
+    }
+
+    std::ofstream file;
+    file.open(filepath.string().c_str());
+    if (!file.is_open())
+        throw std::runtime_error("Cannot open wallet dump file");
+        //throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
+
+    std::map<CTxDestination, int64_t> mapKeyBirth;
+    const std::map<CKeyID, int64_t>& mapKeyPool = GetAllReserveKeys();
+    GetKeyBirthTimes(mapKeyBirth);
+
+    std::set<CScriptID> scripts = GetCScripts();
+    // TODO: include scripts in GetKeyBirthTimes() output instead of separate
+
+    // sort time/key pairs
+    std::vector<std::pair<int64_t, CKeyID> > vKeyBirth;
+    for (const auto& entry : mapKeyBirth) {
+        if (const CKeyID* keyID = boost::get<CKeyID>(&entry.first)) { // set and test
+            vKeyBirth.push_back(std::make_pair(entry.second, *keyID));
+        }
+    }
+    mapKeyBirth.clear();
+    std::sort(vKeyBirth.begin(), vKeyBirth.end());
+
+    // produce output
+    file << strprintf("# Wallet dump created by Bitcoin %s\n", CLIENT_BUILD);
+    file << strprintf("# * Created on %s\n", FormatISO8601DateTime(GetTime()));
+    file << strprintf("# * Best block at time of backup was %i (%s),\n", chainActive.Height(), chainActive.Tip()->GetBlockHash().ToString());
+    file << strprintf("#   mined on %s\n", FormatISO8601DateTime(chainActive.Tip()->GetBlockTime()));
+    file << "\n";
+
+    // add the base58check encoded extended master if the wallet uses HD
+    CKeyID seed_id = GetHDChain().seed_id;
+    if (!seed_id.IsNull())
+    {
+        CKey seed;
+        if (GetKey(seed_id, seed)) {
+            CExtKey masterKey;
+            masterKey.SetSeed(seed.begin(), seed.size());
+
+            file << "# extended private masterkey: " << EncodeExtKey(masterKey) << "\n\n";
+        }
+    }
+    for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++) {
+        const CKeyID &keyid = it->second;
+        std::string strTime = FormatISO8601DateTime(it->first);
+        std::string strAddr;
+        std::string strLabel;
+        CKey key;
+        if (GetKey(keyid, key)) {
+            file << strprintf("%s %s ", EncodeSecret(key), strTime);
+
+            bool fLabelFound = false;
+            CKey key;
+            GetKey(keyid, key);
+            for (const auto& dest : GetAllDestinationsForKey(key.GetPubKey())) {
+                if (mapAddressBook.count(dest)) {
+                    if (!strAddr.empty()) {
+                        strAddr += ",";
+                    }
+                    strAddr += EncodeDestination(dest);
+                    strLabel = EncodeDumpString(mapAddressBook[dest].name);
+                    fLabelFound = true;
+                }
+            }
+            if (!fLabelFound) {
+                strAddr = EncodeDestination(GetDestinationForKey(key.GetPubKey(), m_default_address_type));
+            }
+
+
+
+            if (fLabelFound) {
+               file << strprintf("label=%s", strLabel);
+            } else if (keyid == seed_id) {
+                file << "hdseed=1";
+            } else if (mapKeyPool.count(keyid)) {
+                file << "reserve=1";
+            } else if (mapKeyMetadata[keyid].hdKeypath == "s") {
+                file << "inactivehdseed=1";
+            } else {
+                file << "change=1";
+            }
+            file << strprintf(" # addr=%s%s\n", strAddr, (mapKeyMetadata[keyid].hdKeypath.size() > 0 ? " hdkeypath="+mapKeyMetadata[keyid].hdKeypath : ""));
+        }
+    }
+    file << "\n";
+    for (const CScriptID &scriptid : scripts) {
+        CScript script;
+        std::string create_time = "0";
+        std::string address = EncodeDestination(scriptid);
+        // get birth times for scripts with metadata
+        auto it = m_script_metadata.find(scriptid);
+        if (it != m_script_metadata.end()) {
+            create_time = FormatISO8601DateTime(it->second.nCreateTime);
+        }
+        if(GetCScript(scriptid, script)) {
+            file << strprintf("%s %s script=1", HexStr(script.begin(), script.end()), create_time);
+            file << strprintf(" # addr=%s\n", address);
+        }
+    }
+    file << "\n";
+    file << "# End of dump\n";
+    file.close();
+
+//    UniValue reply(UniValue::VOBJ);
+//    reply.pushKV("filename", filepath.string());
+
+    //return true;
+}
+
+
 
 void CWallet::LearnRelatedScripts(const CPubKey& key, OutputType type)
 {

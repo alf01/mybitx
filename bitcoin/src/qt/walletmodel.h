@@ -203,7 +203,10 @@ public:
     interfaces::Wallet& wallet() const { return *m_wallet; }
 
     QString getWalletName() const;
+    QString getWalletPath() const;
     QString getDisplayName() const;
+
+    void dumpWalletModel();
 
     bool isMultiwallet();
 

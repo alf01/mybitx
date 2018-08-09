@@ -126,6 +126,7 @@ private:
     QAction* m_new_wallet_action = nullptr;
     QAction* m_open_wallet_action = nullptr;
     QAction* m_close_wallet_action = nullptr;
+    QAction* m_dump_wallet_action = nullptr;
     QAction* m_wallet_selector_label_action = nullptr;
     QAction* m_wallet_selector_action = nullptr;
 
@@ -201,6 +202,7 @@ public Q_SLOTS:
     void openPrevWallets();
     void appendToPrevWallets(QString newPath);
     void removeFromPrevWallets(QString newPath);
+    void dumpWallet();
 
 private:
     /** Set the encryption status as shown in the UI.
