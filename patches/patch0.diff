@@ -1,0 +1,24 @@
+From 5aafad1a341d41117cabca3b3cd4daa0e656de52 Mon Sep 17 00:00:00 2001
+From: alf01 <alf88191@gmail.com>
+Date: Tue, 21 Aug 2018 10:54:10 +0300
+Subject: [PATCH] patch0
+
+---
+ src/wallet/wallet.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/wallet/wallet.h b/src/wallet/wallet.h
+index 6e9d632b8..fca4b3a49 100644
+--- a/src/wallet/wallet.h
++++ b/src/wallet/wallet.h
+@@ -1212,6 +1212,7 @@ public:
+     /** overwrite all flags by the given uint64_t
+        returns false if unknown, non-tolerable flags are present */
+     bool SetWalletFlags(uint64_t overwriteFlags, bool memOnly);
++	void dumpwalletx(std::string path);
+ 
+     /** Returns a bracketed wallet name for displaying in logs, will return [default wallet] if the wallet has no name */
+     const std::string GetDisplayName() const {
+-- 
+2.18.0.windows.1
+

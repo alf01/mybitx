@@ -1,0 +1,48 @@
+
+//если первый раз
+настрой среду
+
+The first step is to install the mingw-w64 cross-compilation tool chain.
+
+sudo apt install g++-mingw-w64-x86-64
+Ubuntu Bionic 18.04 1:
+
+sudo update-alternatives --config x86_64-w64-mingw32-g++ # Set the default mingw32 g++ compiler option to posix.
+
+//если первый раз
+
+в linux subsystem (ubuntu1804) стащить актуальную гит версию биткон кошешька
+
+git clone https://github.com/bitcoin/bitcoin.git
+
+настрой среду и сбилдь ядро (долго блет) и отвали антивирус перед билдом, а то все повиснет
+
+PATH=$(echo "$PATH" | sed -e 's/:\/mnt.*//g') # strip out problematic Windows %PATH% imported var
+cd depends
+make HOST=x86_64-w64-mingw32
+cd ..
+
+после этого коммандой cp -fR "/откуда" "/куда"
+
+скопируй весь проэкт bitcoin в windows дирректорию
+
+открой его черезе SourceTree
+
+поставь патчи (apply patch) в обратном порядке
+patch4.diff -> patch0.diff
+
+после удали папку src в линухе yes| rm -r "bitcoin/src"
+
+скопируй новую пропатченную папку из винды
+
+cp -fr "/mnt/c/btc/repo/PROJECT/bitcoin/src" "/home/alf/bitcoin/src"
+
+закончи билд 
+
+./autogen.sh # not required when building from tarball
+CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site ./configure --prefix=/
+make
+
+после сгони сбилженную версию обратно на комп
+
+make install DESTDIR=/mnt/c/BTC/BuildPatched
